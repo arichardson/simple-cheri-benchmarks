@@ -24,8 +24,10 @@ add_compile_options(-O2)
 function(add_qsort_test _suffix) # _flags
     add_library(qsort_${_suffix} SHARED qsort.c)
     target_compile_options(qsort_${_suffix} PUBLIC -Wall ${ARGN})
+    target_link_options(qsort_${_suffix} PRIVATE ${ARGN})
     add_executable(test_qsort_${_suffix} test_qsort.c)
     target_compile_options(test_qsort_${_suffix} PRIVATE -pedantic -Wall -Wextra ${ARGN})
+    target_link_options(test_qsort_${_suffix} PRIVATE ${ARGN})
     target_link_libraries(test_qsort_${_suffix} PRIVATE qsort_${_suffix})
     #if (EXISTS "$ENV{CHERI_SDK}/llvm-objdump")
         add_custom_command(TARGET test_qsort_${_suffix} POST_BUILD
@@ -33,6 +35,7 @@ function(add_qsort_test _suffix) # _flags
             BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_${_suffix}.dump" VERBATIM
             COMMENT "Creating dump of test_qsort_${_suffix}")
     #endif()
+    install(TARGETS test_qsort_${_suffix} qsort_${_suffix} RUNTIME DESTINATION bin LIBRARY DESTINATION bin)
 endfunction()
 
 add_qsort_test(default)
@@ -63,5 +66,32 @@ endif()
 
 check_c_compiler_flag(-mcet CET)
 if(CET AND CF_PROTECTION)
-    add_qsort_test(fcf -mcet -fcf-protection)
+    add_qsort_test(fcf_mcet -mcet -fcf-protection)
+endif()
+
+check_c_compiler_flag(-mshstk SHSTK)
+if(SHSTK AND CF_PROTECTION)
+    add_qsort_test(fcf_return -mshstk -fcf-protection=return)
+endif()
+
+check_c_compiler_flag(-fcf-protection=full FCF_FULL)
+if(FCF_FULL)
+    add_qsort_test(fcf_full -mshstk -fcf-protection=full)
+endif()
+
+check_c_compiler_flag(-mretpoline RETPOLINE)
+if(RETPOLINE)
+    add_qsort_test(retpoline -mretpoline)
+endif()
+
+if (FALSE)
+    # TODO: get asan benchmarks
+    check_c_compiler_flag(-fsanitize=address ASAN)
+    if(ASAN)
+        add_qsort_test(asan -fsanitize=address)
+    endif()
+    check_c_compiler_flag(-fsanitize=undefined UBSAN)
+    if(UBSAN)
+        add_qsort_test(ubsan -fsanitize=undefined)
+    endif()
 endif()

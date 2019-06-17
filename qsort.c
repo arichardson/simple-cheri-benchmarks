@@ -45,9 +45,14 @@
 static char sccsid[] = "@(#)qsort.c	8.1 (Berkeley) 6/4/93";
 #endif /* LIBC_SCCS and not lint */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$")
-
 #include <stdlib.h>
+
+#ifndef __unused
+#define __unused __attribute__((unused))
+#endif
+#if !defined(__has_feature)
+#define __has_feature(...) 0
+#endif
 
 #if __has_feature(capabilities)
 typedef __uintcap_t big_primitive_type;
