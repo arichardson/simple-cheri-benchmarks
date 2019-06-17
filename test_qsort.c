@@ -58,7 +58,11 @@ int main(int argc, char** argv) {
   // if (argc < 2) {
   //  errx(EX_USAGE, "usage: <num_iterations> [ascending/descending] [bufsize]");
   // }
+#ifdef __mips__
+  long iterations = 1000;
+#else
   long iterations = 10000;
+#endif
   if (argc > 1)
     iterations = atol(argv[1]);
   if (iterations < 1)
