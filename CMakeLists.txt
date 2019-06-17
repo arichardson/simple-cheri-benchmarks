@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.14)
 project(simple-cheri-benchmarks)
 set(MACOSX_RPATH ON)
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)  # Use $ORIGIN when possible
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}:$ORIGIN")
 
 include(CheckCCompilerFlag)
-check_c_compiler_flag(-fstack-protector-all STACK_PROTECTOR_ALL)
-
 # Add -pie to binaries
 include(CheckPIESupported)
 check_pie_supported()
@@ -40,10 +42,24 @@ endfunction()
 
 add_qsort_test(default)
 
-if(STACK_PROTECTOR_ALL)
-    add_qsort_test(spa -fstack-protector-all)
-endif()
+set(ALL_SUPPORTED_FLAGS)
 
+macro(check_security_flag _flag _varname)
+    check_c_compiler_flag(${_flag} ${_varname})
+    if(${_varname})
+        list(APPEND ALL_SUPPORTED_FLAGS ${_flag})
+    endif()
+endmacro()
+
+macro(add_test_with_flag _suffix _varname _flag)
+    check_security_flag(${_flag} ${_varname})
+    if(${_varname})
+        add_qsort_test(${_suffix} ${_flag} ${ARGN})
+    endif()
+endmacro()
+
+
+add_test_with_flag(spa STACK_PROTECTOR_ALL -fstack-protector-all)
 
 # https://developers.redhat.com/blog/2018/03/21/compiler-and-linker-flags-gcc/
 # -fstack-protector-strong completely supersedes the earlier stack protector
@@ -51,47 +67,61 @@ endif()
 # or use alloca. Other functions cannot be subject to direct stack buffer
 # overflows and are not instrumented. This greatly reduces the performance and
 # code size impact of the stack protector.
-check_c_compiler_flag(-fstack-protector-strong STACK_PROTECTOR_STRONG)
-if(STACK_PROTECTOR_STRONG)
-    add_qsort_test(sps -fstack-protector-strong)
-endif()
+add_test_with_flag(sps STACK_PROTECTOR_STRONG -fstack-protector-strong)
 
 
 # Intel CET: decodes to nops on older (i.e. currently all) CPUs
 # Similar to ARM BTI
-check_c_compiler_flag(-fcf-protection CF_PROTECTION)
-if(CF_PROTECTION)
-    add_qsort_test(fcf -fcf-protection)
-endif()
+add_test_with_flag(fcf CF_PROTECTION -fcf-protection)
 
-check_c_compiler_flag(-mcet CET)
+check_security_flag(-fcf-protection=return FCF_RETURN)
+check_security_flag(-fcf-protection=full FCF_FULL)
+check_security_flag(-mshstk SHSTK)
+check_security_flag(-mcet CET)
 if(CET AND CF_PROTECTION)
     add_qsort_test(fcf_mcet -mcet -fcf-protection)
 endif()
-
-check_c_compiler_flag(-mshstk SHSTK)
-if(SHSTK AND CF_PROTECTION)
+if(SHSTK AND FCF_RETURN)
     add_qsort_test(fcf_return -mshstk -fcf-protection=return)
 endif()
-
-check_c_compiler_flag(-fcf-protection=full FCF_FULL)
-if(FCF_FULL)
+if(SHSTK AND FCF_FULL)
     add_qsort_test(fcf_full -mshstk -fcf-protection=full)
 endif()
 
-check_c_compiler_flag(-mretpoline RETPOLINE)
-if(RETPOLINE)
-    add_qsort_test(retpoline -mretpoline)
+add_test_with_flag(retpoline RETPOLINE -mretpoline)
+add_test_with_flag(retpoline_gcc_ib RETPOLINE_GCC_IB -mindirect-branch=thunk)
+add_test_with_flag(retpoline_gcc_fr RETPOLINE_GCC_FR -mfunction-return=thunk)
+if (RETPOLINE_GCC_IB AND RETPOLINE_GCC_FR )
+    add_qsort_test(retpoline_gcc -mindirect-branch=thunk -mfunction-return=thunk)
+endif()
+
+# LLVM safe-stack (split spills and address-taken variables)
+add_test_with_flag(safestack SAFESTACK -fsanitize=safe-stack)
+
+
+message(STATUS "All supported flags: ${ALL_SUPPORTED_FLAGS}")
+
+if (-fcf-protection IN_LIST ALL_SUPPORTED_FLAGS AND -mindirect-branch=thunk IN_LIST ALL_SUPPORTED_FLAGS)
+    # These flags are incompatible for GCC
+    set(FCF_FLAGS ${ALL_SUPPORTED_FLAGS})
+    set(RETPOLINE_FLAGS ${ALL_SUPPORTED_FLAGS})
+    list(FILTER RETPOLINE_FLAGS EXCLUDE REGEX "-fcf-protection.*")
+    list(FILTER FCF_FLAGS EXCLUDE REGEX "-mindirect-branch=.*")
+    list(FILTER FCF_FLAGS EXCLUDE REGEX "-mfunction-return=.*")
+    add_qsort_test(all_retpoline ${RETPOLINE_FLAGS})
+    add_qsort_test(all_fcf ${FCF_FLAGS})
+else()
+    add_qsort_test(all ${ALL_SUPPORTED_FLAGS})
 endif()
 
 if (FALSE)
-    # TODO: get asan benchmarks
-    check_c_compiler_flag(-fsanitize=address ASAN)
-    if(ASAN)
-        add_qsort_test(asan -fsanitize=address)
-    endif()
-    check_c_compiler_flag(-fsanitize=undefined UBSAN)
-    if(UBSAN)
-        add_qsort_test(ubsan -fsanitize=undefined)
-    endif()
+    # TODO: also include asan benchmarks
+    add_test_with_flag(asan ASAN -fsanitize=address)
+    add_test_with_flag(ubsan UBSAN -fsanitize=undefined)
 endif()
+
+
+# TO run and get cycle counds on linux: perf stat -d -d -d --sync --repeat 20
+# CSV-ish output: --field-separator=,
+
+# for i in test_qsort*; do echo $i; perf stat -d -d -d --sync --field-separator=, --repeat 15 -o results_$i.csv ./$i 8000; done

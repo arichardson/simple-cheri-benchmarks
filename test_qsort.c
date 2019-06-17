@@ -79,6 +79,7 @@ int main(int argc, char** argv) {
     errx(EX_USAGE, "bufsize must be between 1 and %ld: %ld", nitems(benchmark_buffer), iterations);
   // ensure buffer is already sorted:
   for (size_t idx = 0; idx < nitems(benchmark_buffer); idx++) {
+    // worst case: set all to the same value!
     benchmark_buffer[idx] = ascending ? idx : nitems(benchmark_buffer) - idx;
   }
 #if 0
