@@ -55,10 +55,12 @@ static long benchmark_buffer[65536];
 #endif
 
 int main(int argc, char** argv) {
-  if (argc < 2) {
-    errx(EX_USAGE, "usage: <num_iterations> [ascending/descending] [bufsize]");
-  }
-  long iterations = atol(argv[1]);
+  // if (argc < 2) {
+  //  errx(EX_USAGE, "usage: <num_iterations> [ascending/descending] [bufsize]");
+  // }
+  long iterations = 10000;
+  if (argc > 1)
+    iterations = atol(argv[1]);
   if (iterations < 1)
     errx(EX_USAGE, "iterations must be greater than 1: %ld", iterations);
   size_t bufsize = nitems(benchmark_buffer);

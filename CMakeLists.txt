@@ -13,18 +13,29 @@ check_pie_supported()
 # Default to -O2
 add_compile_options(-O2)
 
-add_library(qsort SHARED qsort.c)
-add_executable(test_qsort test_qsort.c)
-target_link_libraries(test_qsort PRIVATE qsort)
-
+#add_library(qsort SHARED qsort.c)
+#add_executable(test_qsort test_qsort.c)
+#target_link_libraries(test_qsort PRIVATE qsort)
+#add_custom_command(TARGET test_qsort PRE_LINK
+#    COMMAND "$ENV{CHERI_SDK}/llvm-objdump" ARGS -d test_qsort > "${CMAKE_CURRENT_BINARY_DIR}/test_qsort.dump"
+#    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/test_qsort.dump" VERBATIM
+#    COMMENT "Creating dump of test_qsort")
 
 function(add_qsort_test _suffix) # _flags
     add_library(qsort_${_suffix} SHARED qsort.c)
-    target_compile_options(qsort_${_suffix} PUBLIC ${ARGN})
+    target_compile_options(qsort_${_suffix} PUBLIC -Wall ${ARGN})
     add_executable(test_qsort_${_suffix} test_qsort.c)
     target_compile_options(test_qsort_${_suffix} PRIVATE -pedantic -Wall -Wextra ${ARGN})
     target_link_libraries(test_qsort_${_suffix} PRIVATE qsort_${_suffix})
+    #if (EXISTS "$ENV{CHERI_SDK}/llvm-objdump")
+        add_custom_command(TARGET test_qsort_${_suffix} POST_BUILD
+            COMMAND "$ENV{CHERI_SDK}/llvm-objdump" ARGS -no-leading-addr -d test_qsort_${_suffix} > "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_${_suffix}.dump"
+            BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_${_suffix}.dump" VERBATIM
+            COMMENT "Creating dump of test_qsort_${_suffix}")
+    #endif()
 endfunction()
+
+add_qsort_test(default)
 
 if(STACK_PROTECTOR_ALL)
     add_qsort_test(spa -fstack-protector-all)
