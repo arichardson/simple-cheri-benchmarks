@@ -38,11 +38,13 @@
 extern void benchmark_qsort(void *a, size_t n, size_t es, int (*cmp)(const void *, const void *));
 
 static bool ascending;
+extern long compare_long(long l1, long l2);
 static int comparator(const void* a1, const void* a2) {
   const long* l1 = (const long*)a1;
   const long* l2 = (const long*)a2;
   // ensure that we access one global variable in the callback:
-  return ascending ? *l1 - *l2 : *l2 - *l1;
+  // FIXME: should call another library functions to show how bad trampolines are
+  return (int)(ascending ? compare_long(*l1,  *l2) : compare_long(*l2, *l1));
 }
 
 static void benchmark_one_run(long* buffer, long count) {
@@ -67,7 +69,13 @@ int main(int argc, char** argv) {
     iterations = atol(argv[1]);
   if (iterations < 1)
     errx(EX_USAGE, "iterations must be greater than 1: %ld", iterations);
+
+#ifdef __mips__
+  size_t bufsize = 5000; /* Takes to long with a 65K buffer */
+#else
   size_t bufsize = nitems(benchmark_buffer);
+#endif
+
   if (argc > 2) {
     if (*argv[2] != 'a' && *argv[2] != 'd')
       errx(EX_USAGE, "second argument must be 'a' or 'd': %s", argv[2]);

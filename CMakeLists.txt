@@ -4,8 +4,18 @@ set(MACOSX_RPATH ON)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)  # Use $ORIGIN when possible
+
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}:$ORIGIN")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+SET(CMAKE_INSTALL_RPATH "$ORIGIN")
+
+if (APPLE)
+    message(STATUS "APPLE TARGET")
+endif()
+if (CMAKE_CROSSCOMPILING)
+    message(STATUS "CMAKE_CROSSCOMPILING")
+endif()
+
 
 include(CheckCCompilerFlag)
 # Add -pie to binaries
@@ -24,7 +34,7 @@ add_compile_options(-O2)
 #    COMMENT "Creating dump of test_qsort")
 
 function(add_qsort_test _suffix) # _flags
-    add_library(qsort_${_suffix} SHARED qsort.c)
+    add_library(qsort_${_suffix} SHARED qsort.c compare_long.c)
     target_compile_options(qsort_${_suffix} PUBLIC -Wall ${ARGN})
     target_link_options(qsort_${_suffix} PRIVATE ${ARGN})
     add_executable(test_qsort_${_suffix} test_qsort.c)
@@ -118,6 +128,31 @@ if (FALSE)
     # TODO: also include asan benchmarks
     add_test_with_flag(asan ASAN -fsanitize=address)
     add_test_with_flag(ubsan UBSAN -fsanitize=undefined)
+endif()
+
+
+install(PROGRAMS run_cheribsd.sh run_linux_perf.sh DESTINATION bin)
+
+# Try building static:
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "EXECUTABLE")
+set(CMAKE_REQUIRED_FLAGS "-static")
+set(CMAKE_REQUIRED_LINK_OPTIONS "-static")
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("int main() { return 0; }" CAN_LINK_STATIC)
+message(STATUS "Can link static: ${CAN_LINK_STATIC}")
+
+if (CAN_LINK_STATIC)
+    add_library(qsort_static STATIC qsort.c compare_long.c)
+    target_compile_options(qsort_static PUBLIC -Wall -static)
+    add_executable(test_qsort_static test_qsort.c)
+    target_compile_options(test_qsort_static PRIVATE -pedantic -Wall -Wextra -static)
+    target_link_options(test_qsort_static PRIVATE -static)
+    target_link_libraries(test_qsort_static PRIVATE qsort_static)
+    add_custom_command(TARGET test_qsort_static POST_BUILD
+        COMMAND "$ENV{CHERI_SDK}/llvm-objdump" ARGS -no-leading-addr -d test_qsort_static > "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_static.dump"
+        BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_static.dump" VERBATIM
+        COMMENT "Creating dump of test_qsort_static")
+    install(TARGETS test_qsort_static qsort_static RUNTIME DESTINATION bin LIBRARY DESTINATION bin)
 endif()
 
 
