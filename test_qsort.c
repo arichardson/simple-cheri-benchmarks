@@ -53,8 +53,9 @@ static void benchmark_one_run(long* buffer, long count) {
 }
 
 /*
- * Ensure that the benchmark buffer is nicely aligned to avoid differences betwee
- * CHERI and MIPS (since Cheri128 will increase the alignment of the buffer
+ * Ensure that the benchmark buffer is nicely aligned to avoid differences between
+ * CHERI and MIPS (since Cheri128 will increase the alignment of the buffer).
+ * This might result in cachelines being evicted that shouldn't be.
  */
 _Alignas(65536) static long benchmark_buffer[65536];
 #ifndef nitems
