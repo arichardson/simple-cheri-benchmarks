@@ -1,0 +1,21 @@
+#!/bin/sh -x
+
+output_dir=${OUTPUT_DIR:-/tmp/benchdir}
+mkdir -p ${output_dir}
+# disable lazy binding:
+export LD_BIND_NOW=1
+export LD_CHERI_BIND_NOW=1
+export STATCOUNTERS_FORMAT=csv
+
+export STATCOUNTERS_OUTPUT=${output_dir}/statcounters-@BENCHMARK_ARCH@-static.csv
+for i in 1 2 3 4 5 6 7 8 9 10; do
+   echo "@BENCHMARK_ARCH@ static run $i" >> ${output_dir}/log-@BENCHMARK_ARCH@-static.txt
+   ./malloc_bench_static -v >> ${output_dir}/log-@BENCHMARK_ARCH@-static.txt
+done
+
+export STATCOUNTERS_OUTPUT=${output_dir}/statcounters-@BENCHMARK_ARCH@-shared.csv
+for i in 1 2 3 4 5 6 7 8 9 10; do
+   echo "@BENCHMARK_ARCH@ shared run $i" >> ${output_dir}/log-@BENCHMARK_ARCH@-shared.txt
+   ./malloc_bench_shared -v >> ${output_dir}/log-@BENCHMARK_ARCH@-shared.txt
+done
+

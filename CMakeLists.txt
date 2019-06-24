@@ -16,6 +16,16 @@ if (CMAKE_CROSSCOMPILING)
     message(STATUS "CMAKE_CROSSCOMPILING")
 endif()
 
+if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "CHERI")
+    message(STATUS "BUILDING FOR CHERI")
+    set(CHERI 1)
+    set(BENCHMARK_ARCH "cheri")
+elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "MIPS")
+    message(STATUS "BUILDING FOR CHERI")
+    set(MIPS 1)
+    set(BENCHMARK_ARCH "mips")
+endif()
+
 
 include(CheckCCompilerFlag)
 # Add -pie to binaries
@@ -33,6 +43,15 @@ add_compile_options(-O2)
 #    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/test_qsort.dump" VERBATIM
 #    COMMENT "Creating dump of test_qsort")
 
+function(add_objdump _target)
+    if (EXISTS "$ENV{CHERI_SDK}/llvm-objdump")
+        add_custom_command(TARGET ${_target} POST_BUILD
+            COMMAND "$ENV{CHERI_SDK}/llvm-objdump" ARGS -no-leading-addr -d $<TARGET_FILE:${_target}> > "${CMAKE_CURRENT_BINARY_DIR}/${_target}.dump"
+            BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/${_target}.dump" VERBATIM
+            COMMENT "Creating dump of ${_target}")
+    endif()
+endfunction()
+
 function(add_qsort_test _suffix) # _flags
     add_library(qsort_${_suffix} SHARED qsort.c compare_long.c)
     target_compile_options(qsort_${_suffix} PUBLIC -Wall ${ARGN})
@@ -41,12 +60,7 @@ function(add_qsort_test _suffix) # _flags
     target_compile_options(test_qsort_${_suffix} PRIVATE -pedantic -Wall -Wextra ${ARGN})
     target_link_options(test_qsort_${_suffix} PRIVATE ${ARGN})
     target_link_libraries(test_qsort_${_suffix} PRIVATE qsort_${_suffix})
-    #if (EXISTS "$ENV{CHERI_SDK}/llvm-objdump")
-        add_custom_command(TARGET test_qsort_${_suffix} POST_BUILD
-            COMMAND "$ENV{CHERI_SDK}/llvm-objdump" ARGS -no-leading-addr -d test_qsort_${_suffix} > "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_${_suffix}.dump"
-            BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_${_suffix}.dump" VERBATIM
-            COMMENT "Creating dump of test_qsort_${_suffix}")
-    #endif()
+    add_objdump(test_qsort_${_suffix})
     install(TARGETS test_qsort_${_suffix} qsort_${_suffix} RUNTIME DESTINATION bin LIBRARY DESTINATION bin)
 endfunction()
 
@@ -69,48 +83,52 @@ macro(add_test_with_flag _suffix _varname _flag)
 endmacro()
 
 
-add_test_with_flag(spa STACK_PROTECTOR_ALL -fstack-protector-all)
+# Do not bother compiling with stack-protector for CHERI (the compiler rejects
+# -fstack-protector-all but allows -fstack-protector-strong
+if (NOT CHERI)
+    add_test_with_flag(spa STACK_PROTECTOR_ALL -fstack-protector-all)
 
-# https://developers.redhat.com/blog/2018/03/21/compiler-and-linker-flags-gcc/
-# -fstack-protector-strong completely supersedes the earlier stack protector
-# options. It only instruments functions that have addressable local variables
-# or use alloca. Other functions cannot be subject to direct stack buffer
-# overflows and are not instrumented. This greatly reduces the performance and
-# code size impact of the stack protector.
-add_test_with_flag(sps STACK_PROTECTOR_STRONG -fstack-protector-strong)
-
-
-# Intel CET: decodes to nops on older (i.e. currently all) CPUs
-# Similar to ARM BTI
-add_test_with_flag(fcf CF_PROTECTION -fcf-protection)
-
-check_security_flag(-fcf-protection=return FCF_RETURN)
-check_security_flag(-fcf-protection=full FCF_FULL)
-check_security_flag(-mshstk SHSTK)
-check_security_flag(-mcet CET)
-if(CET AND CF_PROTECTION)
-    add_qsort_test(fcf_mcet -mcet -fcf-protection)
-endif()
-if(SHSTK AND FCF_RETURN)
-    add_qsort_test(fcf_return -mshstk -fcf-protection=return)
-endif()
-if(SHSTK AND FCF_FULL)
-    add_qsort_test(fcf_full -mshstk -fcf-protection=full)
+    # https://developers.redhat.com/blog/2018/03/21/compiler-and-linker-flags-gcc/
+    # -fstack-protector-strong completely supersedes the earlier stack protector
+    # options. It only instruments functions that have addressable local variables
+    # or use alloca. Other functions cannot be subject to direct stack buffer
+    # overflows and are not instrumented. This greatly reduces the performance and
+    # code size impact of the stack protector.
+    add_test_with_flag(sps STACK_PROTECTOR_STRONG -fstack-protector-strong)
 endif()
 
-add_test_with_flag(retpoline RETPOLINE -mretpoline)
-add_test_with_flag(retpoline_gcc_ib RETPOLINE_GCC_IB -mindirect-branch=thunk)
-add_test_with_flag(retpoline_gcc_fr RETPOLINE_GCC_FR -mfunction-return=thunk)
-if (RETPOLINE_GCC_IB AND RETPOLINE_GCC_FR )
-    add_qsort_test(retpoline_gcc -mindirect-branch=thunk -mfunction-return=thunk)
+# Skip CET and retpoline when targeting MIPS or CHERI:
+if (NOT MIPS AND NOT CHERI)
+    # Intel CET: decodes to nops on older (i.e. currently all) CPUs
+    # Similar to ARM BTI
+    add_test_with_flag(fcf CF_PROTECTION -fcf-protection)
+
+    check_security_flag(-fcf-protection=return FCF_RETURN)
+    check_security_flag(-fcf-protection=full FCF_FULL)
+    check_security_flag(-mshstk SHSTK)
+    check_security_flag(-mcet CET)
+    if(CET AND CF_PROTECTION)
+        add_qsort_test(fcf_mcet -mcet -fcf-protection)
+    endif()
+    if(SHSTK AND FCF_RETURN)
+        add_qsort_test(fcf_return -mshstk -fcf-protection=return)
+    endif()
+    if(SHSTK AND FCF_FULL)
+        add_qsort_test(fcf_full -mshstk -fcf-protection=full)
+    endif()
+
+    add_test_with_flag(retpoline RETPOLINE -mretpoline)
+    add_test_with_flag(retpoline_gcc_ib RETPOLINE_GCC_IB -mindirect-branch=thunk)
+    add_test_with_flag(retpoline_gcc_fr RETPOLINE_GCC_FR -mfunction-return=thunk)
+    if (RETPOLINE_GCC_IB AND RETPOLINE_GCC_FR )
+        add_qsort_test(retpoline_gcc -mindirect-branch=thunk -mfunction-return=thunk)
+    endif()
 endif()
 
 # LLVM safe-stack (split spills and address-taken variables)
 add_test_with_flag(safestack SAFESTACK -fsanitize=safe-stack)
 
-
 message(STATUS "All supported flags: ${ALL_SUPPORTED_FLAGS}")
-
 if (-fcf-protection IN_LIST ALL_SUPPORTED_FLAGS AND -mindirect-branch=thunk IN_LIST ALL_SUPPORTED_FLAGS)
     # These flags are incompatible for GCC
     set(FCF_FLAGS ${ALL_SUPPORTED_FLAGS})
@@ -121,7 +139,11 @@ if (-fcf-protection IN_LIST ALL_SUPPORTED_FLAGS AND -mindirect-branch=thunk IN_L
     add_qsort_test(all_retpoline ${RETPOLINE_FLAGS})
     add_qsort_test(all_fcf ${FCF_FLAGS})
 else()
-    add_qsort_test(all ${ALL_SUPPORTED_FLAGS})
+    if(ALL_SUPPORTED_FLAGS)
+        add_qsort_test(all ${ALL_SUPPORTED_FLAGS})
+    else()
+        message(STATUS "Extra mitigation flags empty -> not builing another binary")
+    endif()
 endif()
 
 if (FALSE)
@@ -129,9 +151,6 @@ if (FALSE)
     add_test_with_flag(asan ASAN -fsanitize=address)
     add_test_with_flag(ubsan UBSAN -fsanitize=undefined)
 endif()
-
-
-install(PROGRAMS run_cheribsd.sh run_linux_perf.sh DESTINATION bin)
 
 # Try building static:
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "EXECUTABLE")
@@ -148,15 +167,48 @@ if (CAN_LINK_STATIC)
     target_compile_options(test_qsort_static PRIVATE -pedantic -Wall -Wextra -static)
     target_link_options(test_qsort_static PRIVATE -static)
     target_link_libraries(test_qsort_static PRIVATE qsort_static)
-    add_custom_command(TARGET test_qsort_static POST_BUILD
-        COMMAND "$ENV{CHERI_SDK}/llvm-objdump" ARGS -no-leading-addr -d test_qsort_static > "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_static.dump"
-        BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/test_qsort_static.dump" VERBATIM
-        COMMENT "Creating dump of test_qsort_static")
+    add_objdump(test_qsort_static)
     install(TARGETS test_qsort_static qsort_static RUNTIME DESTINATION bin LIBRARY DESTINATION bin)
 endif()
 
+
+function(add_simple_benchmark _target) # _srcs
+    add_executable(${_target} ${ARGN})
+    target_compile_options(${_target} PRIVATE -pedantic -Wall -Wextra)
+    add_objdump(${_target})
+    install(TARGETS ${_target} RUNTIME DESTINATION bin LIBRARY DESTINATION bin)
+endfunction()
+
+## Simple malloc benchmark:
+add_simple_benchmark(malloc_bench_shared malloc_bench.c)
+if(MIPS OR CHERI)
+    target_link_libraries(malloc_bench_shared PRIVATE statcounters)
+endif()
+if (CAN_LINK_STATIC)
+    add_simple_benchmark(malloc_bench_static malloc_bench.c)
+    target_compile_options(malloc_bench_static PRIVATE -static)
+    target_link_options(malloc_bench_static PRIVATE -static)
+    if(MIPS OR CHERI)
+        target_link_libraries(malloc_bench_static PRIVATE statcounters)
+    endif()
+endif()
+
+configure_file(malloc_benchmark.sh.in ${CMAKE_CURRENT_BINARY_DIR}/malloc_benchmark.sh @ONLY)
+configure_file(run_cheribsd.sh.in ${CMAKE_CURRENT_BINARY_DIR}/run_cheribsd.sh @ONLY)
+install(PROGRAMS
+    ${CMAKE_CURRENT_BINARY_DIR}/malloc_benchmark.sh
+    ${CMAKE_CURRENT_BINARY_DIR}/run_cheribsd.sh
+    run_linux_perf.sh
+    DESTINATION bin)
 
 # TO run and get cycle counds on linux: perf stat -d -d -d --sync --repeat 20
 # CSV-ish output: --field-separator=,
 
 # for i in test_qsort*; do echo $i; perf stat -d -d -d --sync --field-separator=, --repeat 15 -o results_$i.csv ./$i 8000; done
+
+
+#get_cmake_property(_variableNames VARIABLES)
+#list (SORT _variableNames)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()
