@@ -52,7 +52,11 @@ static void benchmark_one_run(long* buffer, long count) {
   benchmark_qsort(buffer, count, sizeof(long), comparator);
 }
 
-static long benchmark_buffer[65536];
+/*
+ * Ensure that the benchmark buffer is nicely aligned to avoid differences betwee
+ * CHERI and MIPS (since Cheri128 will increase the alignment of the buffer
+ */
+_Alignas(65536) static long benchmark_buffer[65536];
 #ifndef nitems
 #define nitems(array) (sizeof(array) / sizeof(array[0]))
 #endif
