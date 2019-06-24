@@ -5,8 +5,17 @@
 #include <statcounters.h>
 #define HAVE_STATCOUNTERS 1
 #ifdef __mips__
+#if __has_include(<statcounters_mips.h>)
 #include <statcounters_mips.h>
-#endif
+static inline uint64_t get_inst_user(void) {
+  return statcounters_get_inst_user_count();
+}
+#else
+static inline uint64_t get_inst_user(void) {
+  return 0;
+}
+#endif // __has_include(<statcounters_mips.h>)
+#endif //  __mips__
 #define COLLECT_STATS(name) statcounters_bank_t name; statcounters_sample(&name)
 static inline void REPORT_STATS(const char* phase, statcounters_bank_t* end, statcounters_bank_t* start) {
   statcounters_bank_t diff;
@@ -18,16 +27,11 @@ static inline void REPORT_STATS(const char* phase, statcounters_bank_t* end, sta
 #define HAVE_STATCOUNTERS 0
 #define COLLECT_STATS(name)
 #define REPORT_STATS(phase, end, start)
+static inline uint64_t get_inst_user(void) {
+  return 0;
+}
 #endif
 
 #ifndef nitems
 #define nitems(array) (sizeof(array) / sizeof(array[0]))
 #endif
-
-static inline uint64_t get_inst_user(void) {
-#ifdef __mips__
-  return statcounters_get_inst_user_count();
-#else
-  return 0;
-#endif
-}
