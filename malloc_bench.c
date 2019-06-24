@@ -38,24 +38,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
-#include <sys/cdefs.h>
-#include <sys/param.h>
 
-#if __has_include(<statcounters.h>)
-#include <statcounters.h>
-#define HAVE_STATCOUNTERS 1
-#ifdef __mips__
-#include <statcounters_mips.h>
-#endif
-#define COLLECT_STATS(name) statcounters_bank_t name; statcounters_sample(&name)
-#else
-#define HAVE_STATCOUNTERS 0
-#define COLLECT_STATS(name)
-#endif
-
-#ifndef nitems
-#define nitems(array) (sizeof(array) / sizeof(array[0]))
-#endif
+#include "simple_benchmarks_common.h"
 
 struct allocated_item {
   void *ptr;
@@ -74,15 +58,6 @@ static size_t get_next_alloc_size(bool small) {
 static unsigned verbosity = 0;
 #define dbg(...) do { if (verbosity) { printf(__VA_ARGS__); } } while(0)
 #define dbg_verbose(...) do { if (verbosity > 1) { printf(__VA_ARGS__); } } while(0)
-
-
-static inline uint64_t get_inst_user(void) {
-#ifdef __mips__
-  return statcounters_get_inst_user_count();
-#else
-  return 0;
-#endif
-}
 
 #define MAX_ALLOCATIONS 4096
 struct allocated_item allocations[MAX_ALLOCATIONS];
@@ -139,18 +114,12 @@ static void run_benchmark(size_t num_elements) {
   dbg("User instructions for realloc() loop:    %12" PRId64 "\n", stats_after_realloc.inst_user - stats_after_partial_free.inst_user);
   dbg("User instructions for final free() loop: %12" PRId64 "\n", stats_at_end.inst_user - stats_after_realloc.inst_user);
   dbg("User instructions (total):               %12" PRId64 "\n", stats_at_end.inst_user - stats_start.inst_user);
-  statcounters_bank_t diff;
-  statcounters_diff(&diff, &stats_after_malloc, &stats_start);
-  statcounters_dump_with_phase(&diff, "-initial-malloc");
-  statcounters_diff(&diff, &stats_after_partial_free, &stats_after_malloc);
-  statcounters_dump_with_phase(&diff, "-partial-free()");
-  statcounters_diff(&diff, &stats_after_realloc, &stats_after_partial_free);
-  statcounters_dump_with_phase(&diff, "-realloc");
-  statcounters_diff(&diff, &stats_at_end, &stats_after_realloc);
-  statcounters_dump_with_phase(&diff, "-complete-free");
-  statcounters_diff(&diff, &stats_at_end, &stats_start);
-  statcounters_dump_with_phase(&diff, "-full-benchmark");
 #endif
+  REPORT_STATS("-initial-malloc", &stats_after_malloc, &stats_start);
+  REPORT_STATS("-partial-free", &stats_after_partial_free, &stats_after_malloc);
+  REPORT_STATS("-realloc", &stats_after_realloc, &stats_after_partial_free);
+  REPORT_STATS("-complete-free", &stats_at_end, &stats_after_realloc);
+  REPORT_STATS("-full-benchmark", &stats_at_end, &stats_start);
 }
 
 static void usage(int exitcode) {

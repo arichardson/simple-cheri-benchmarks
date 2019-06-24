@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sysexits.h>
+#include "simple_benchmarks_common.h"
 
 extern void benchmark_qsort(void *a, size_t n, size_t es, int (*cmp)(const void *, const void *));
 
@@ -98,8 +99,10 @@ int main(int argc, char** argv) {
   }
 #endif
   // Now do the benchmark
+  COLLECT_STATS(stats_at_start);
   for (long n = 0; n < iterations; n++) {
     benchmark_one_run(benchmark_buffer, bufsize);
   }
-
+  COLLECT_STATS(stats_at_end);
+  REPORT_STATS("-benchmark-loop", &stats_at_end, &stats_at_start);
 }
