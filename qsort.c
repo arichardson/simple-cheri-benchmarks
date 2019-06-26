@@ -47,6 +47,9 @@ static char sccsid[] = "@(#)qsort.c	8.1 (Berkeley) 6/4/93";
 #include <sys/cdefs.h>
 #include <stdlib.h>
 
+#define qsort error_dont_call
+#define qsort_r error_dont_call
+
 #ifndef __unused
 #define __unused __attribute__((unused))
 #endif
@@ -219,9 +222,9 @@ loop:
 		/* Recurse on left partition, then iterate on right partition */
 		if (d1 > es) {
 #ifdef I_AM_QSORT_R
-			qsort_r(a, d1 / es, es, thunk, cmp);
+			benchmark_qsort_r(a, d1 / es, es, thunk, cmp);
 #else
-			qsort(a, d1 / es, es, cmp);
+			benchmark_qsort(a, d1 / es, es, cmp);
 #endif
 		}
 		if (d2 > es) {
@@ -235,9 +238,9 @@ loop:
 		/* Recurse on right partition, then iterate on left partition */
 		if (d2 > es) {
 #ifdef I_AM_QSORT_R
-			qsort_r(pn - d2, d2 / es, es, thunk, cmp);
+			benchmark_qsort_r(pn - d2, d2 / es, es, thunk, cmp);
 #else
-			qsort(pn - d2, d2 / es, es, cmp);
+			benchmark_qsort(pn - d2, d2 / es, es, cmp);
 #endif
 		}
 		if (d1 > es) {
