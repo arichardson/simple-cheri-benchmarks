@@ -19,12 +19,23 @@ endif()
 if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "CHERI")
     message(STATUS "BUILDING FOR CHERI")
     set(CHERI 1)
-    set(BENCHMARK_ARCH "cheri")
+    if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "256-bit")
+      set(BENCHMARK_ARCH "cheri-256")
+    elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "128-bit")
+      set(BENCHMARK_ARCH "cheri-128")
+    elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "64-bit")
+      set(BENCHMARK_ARCH "cheri-64")
+    else()
+      set(BENCHMARK_ARCH "cheri")
+    endif()
 elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "MIPS")
     message(STATUS "BUILDING FOR CHERI")
     set(MIPS 1)
     set(BENCHMARK_ARCH "mips")
+else()
+    set(BENCHMARK_ARCH "unknown")
 endif()
+message(STATUS "BENCHMARK_ARCH is ${BENCHMARK_ARCH}")
 
 
 include(CheckCCompilerFlag)
@@ -212,9 +223,11 @@ endif()
 
 configure_file(malloc_benchmark.sh.in ${CMAKE_CURRENT_BINARY_DIR}/malloc_benchmark.sh @ONLY)
 configure_file(run_cheribsd.sh.in ${CMAKE_CURRENT_BINARY_DIR}/run_cheribsd.sh @ONLY)
+configure_file(run_jenkins_bluehive.sh ${CMAKE_CURRENT_BINARY_DIR}/run_jenkins_bluehive.sh @ONLY)
 install(PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/malloc_benchmark.sh
     ${CMAKE_CURRENT_BINARY_DIR}/run_cheribsd.sh
+    ${CMAKE_CURRENT_BINARY_DIR}/run_jenkins_bluehive.sh
     run_linux_perf.sh
     DESTINATION bin)
 

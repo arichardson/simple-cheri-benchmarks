@@ -36,29 +36,35 @@ set -xe
 # global variables #
 ####################
 
-OUTFILE=statcounters.csv
+OUTFILE=$(pwd)/statcounters.csv
 DISCARD_RUN=2
 SAMPLE_RUN=10
 BENCHMARK_LIST="test_qsort_static test_qsort_default malloc_bench_shared malloc_bench_static"
+ARCH="@BENCHMARK_ARCH@"
 
 ###################
 # options parsing #
 ###################
 
 usage(){
-    printf  "Usage: %s [-h] [-o outfile] [-d discardrun] [-r samplerun] [-s size] cpuname\n" "$(basename $0)"
+    printf  "Usage: %s [-h] [-a arch] [-b benchmarks] [-o outfile] [-d discardrun] [-r samplerun]\n" "$(basename $0)"
     printf  "\t%-15s\t%s\n" "-h" "display this help message"
+    printf  "\t%-15s\t%s\n" "-a arch" "Use arch as the architecture value in the csv (default: $ARCH)"
     printf  "\t%-15s\t%s\n" "-b benchmarks" "run the following benchmarks (default: $BENCHMARK_LIST)"
     printf  "\t%-15s\t%s\n" "-o outfile" "output statcounters in outfile (pah relative to $(pwd)) (default: $OUTFILE)"
     printf  "\t%-15s\t%s\n" "-d discardrun" "number of runs to discard (default: $DISCARD_RUN)"
     printf  "\t%-15s\t%s\n" "-r samplerun" "number of runs to sample (default: $SAMPLE_RUN)"
     printf  "\t%-15s\t%s\n" "cpuname" "the cpu for which to run, one of {mips,cheri128,cheri256}"
 }
-while getopts "ho:d:r:" opt; do
+while getopts "ha:b:o:d:r:" opt; do
     case $opt in
         h)
             usage
             exit 0
+            ;;
+        a)
+            ARCH="$OPTARG"
+            echo "Benchmark architecture set to \"$ARCH\""
             ;;
         b)
             BENCHMARK_LIST="$OPTARG"
@@ -108,16 +114,6 @@ if [ -n "$ARCH" ]; then
   export STATCOUNTERS_ARCHNAME="$ARCH"
 fi
 export BENCHMARK_ROOT=$PWD
-
-for i in malloc_bench_shared malloc_bench_static test_qsort*; do
-  echo $i
-  if [ -x "$i" ]; then
-    echo "Running $i: `date`"
-    do_test ./$i 1000
-    echo "Completed $i: `date`"
-    date
-  fi
-done
 
 for bench in $BENCHMARK_LIST; do
     echo "---> Running $bench benchmark $(date)"
