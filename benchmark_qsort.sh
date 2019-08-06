@@ -2,7 +2,7 @@
 
 run_benchmark() {
   #env | grep STATCOU
-  beri_count_stats -a "$STATCOUNTERS_ARCHNAME" -p "$STATCOUNTERS_PROGNAME-full" -o "$STATCOUNTERS_OUTPUT" "$@"
+  beri_count_stats -a "$STATCOUNTERS_ARCHNAME" -f csv -p "$STATCOUNTERS_PROGNAME-full" -o "$STATCOUNTERS_OUTPUT" "$@"
 }
 
 set -xe
