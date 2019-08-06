@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
   //  errx(EX_USAGE, "usage: <num_iterations> [ascending/descending] [bufsize]");
   // }
 #ifdef __mips__
-  long iterations = 1000;
+  long iterations = 500;
 #else
   long iterations = 10000;
 #endif
