@@ -124,7 +124,7 @@ for bench in $BENCHMARK_LIST; do
     export STATCOUNTERS_PROGNAME="$bench"
     i=0
     while [ $i != "$DISCARD_RUN" ]; do
-        beri_count_stats -a "$STATCOUNTERS_ARCHNAME" -f csv -o /dev/null "$BENCHMARK_ROOT/$bench" || echo "Failed to run $BENCHMARK_ROOT/$bench"
+        beri_count_stats -a "$STATCOUNTERS_ARCHNAME" -o /dev/null "$BENCHMARK_ROOT/$bench" || echo "Failed to run $BENCHMARK_ROOT/$bench"
         i=$(($i+1))
     done
     echo "... discarded $DISCARD_RUN run(s)"
@@ -132,7 +132,7 @@ for bench in $BENCHMARK_LIST; do
     echo "---> Reset statcounters output file to $STATCOUNTERS_OUTPUT for sampled runs"
     i=0
     while [ $i != $SAMPLE_RUN ]; do
-        beri_count_stats -a "$STATCOUNTERS_ARCHNAME" -f csv -o "$OUTFILE" "$BENCHMARK_ROOT/$bench" || echo "Failed to run $BENCHMARK_ROOT/$bench"
+        beri_count_stats -a "$STATCOUNTERS_ARCHNAME" -o "$OUTFILE" "$BENCHMARK_ROOT/$bench" || echo "Failed to run $BENCHMARK_ROOT/$bench"
         echo "... $bench benchmark run $i done"
         i=$(($i+1))
     done
