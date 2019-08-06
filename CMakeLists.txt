@@ -224,6 +224,7 @@ endif()
 configure_file(malloc_benchmark.sh.in ${CMAKE_CURRENT_BINARY_DIR}/malloc_benchmark.sh @ONLY)
 configure_file(run_cheribsd.sh.in ${CMAKE_CURRENT_BINARY_DIR}/run_cheribsd.sh @ONLY)
 configure_file(run_jenkins-bluehive.sh ${CMAKE_CURRENT_BINARY_DIR}/run_jenkins-bluehive.sh @ONLY)
+configure_file(benchmark_qsort.sh ${CMAKE_CURRENT_BINARY_DIR}/benchmark_qsort @ONLY)
 install(PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/malloc_benchmark.sh
     ${CMAKE_CURRENT_BINARY_DIR}/run_cheribsd.sh

@@ -39,7 +39,8 @@ set -xe
 OUTFILE=$(pwd)/statcounters.csv
 DISCARD_RUN=2
 SAMPLE_RUN=10
-BENCHMARK_LIST="test_qsort_static test_qsort_default malloc_bench_shared malloc_bench_static"
+# Note: benchmark_qsort is a shell script!
+BENCHMARK_LIST="malloc_bench_shared malloc_bench_static benchmark_qsort"
 ARCH="@BENCHMARK_ARCH@"
 
 ###################
@@ -110,9 +111,7 @@ export LD_LIBRARY_PATH="$(pwd)/lib"
 ################
 echo "---> Enabling stat counters csv mode"
 export STATCOUNTERS_FORMAT=csv
-if [ -n "$ARCH" ]; then
-  export STATCOUNTERS_ARCHNAME="$ARCH"
-fi
+export STATCOUNTERS_ARCHNAME="$ARCH"
 export BENCHMARK_ROOT=$PWD
 
 for bench in $BENCHMARK_LIST; do
@@ -124,7 +123,7 @@ for bench in $BENCHMARK_LIST; do
     export STATCOUNTERS_PROGNAME="$bench"
     i=0
     while [ $i != "$DISCARD_RUN" ]; do
-        beri_count_stats -a "$STATCOUNTERS_ARCHNAME" -o /dev/null "$BENCHMARK_ROOT/$bench" || echo "Failed to run $BENCHMARK_ROOT/$bench"
+        "$BENCHMARK_ROOT/$bench" || echo "Failed to run $BENCHMARK_ROOT/$bench"
         i=$(($i+1))
     done
     echo "... discarded $DISCARD_RUN run(s)"
@@ -132,7 +131,7 @@ for bench in $BENCHMARK_LIST; do
     echo "---> Reset statcounters output file to $STATCOUNTERS_OUTPUT for sampled runs"
     i=0
     while [ $i != $SAMPLE_RUN ]; do
-        beri_count_stats -a "$STATCOUNTERS_ARCHNAME" -o "$OUTFILE" "$BENCHMARK_ROOT/$bench" || echo "Failed to run $BENCHMARK_ROOT/$bench"
+        "$BENCHMARK_ROOT/$bench" || echo "Failed to run $BENCHMARK_ROOT/$bench"
         echo "... $bench benchmark run $i done"
         i=$(($i+1))
     done
