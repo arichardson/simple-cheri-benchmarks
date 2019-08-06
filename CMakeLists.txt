@@ -223,11 +223,11 @@ endif()
 
 configure_file(malloc_benchmark.sh.in ${CMAKE_CURRENT_BINARY_DIR}/malloc_benchmark.sh @ONLY)
 configure_file(run_cheribsd.sh.in ${CMAKE_CURRENT_BINARY_DIR}/run_cheribsd.sh @ONLY)
-configure_file(run_jenkins_bluehive.sh ${CMAKE_CURRENT_BINARY_DIR}/run_jenkins_bluehive.sh @ONLY)
+configure_file(run_jenkins-bluehive.sh ${CMAKE_CURRENT_BINARY_DIR}/run_jenkins-bluehive.sh @ONLY)
 install(PROGRAMS
     ${CMAKE_CURRENT_BINARY_DIR}/malloc_benchmark.sh
     ${CMAKE_CURRENT_BINARY_DIR}/run_cheribsd.sh
-    ${CMAKE_CURRENT_BINARY_DIR}/run_jenkins_bluehive.sh
+    ${CMAKE_CURRENT_BINARY_DIR}/run_jenkins-bluehive.sh
     run_linux_perf.sh
     DESTINATION bin)
 
