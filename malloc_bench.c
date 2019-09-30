@@ -122,6 +122,13 @@ static void run_benchmark(size_t num_elements) {
   REPORT_STATS("-full-benchmark", &stats_at_end, &stats_start);
 }
 
+#ifdef __GLIBC__
+extern char *program_invocation_short_name;
+static inline const char* getprogname(void) {
+  return program_invocation_short_name;
+}
+#endif
+
 static void usage(int exitcode) {
   fprintf(stderr, "%s [-v/-q] [--elements N] [--seed N]\n", getprogname());
   exit(exitcode);
