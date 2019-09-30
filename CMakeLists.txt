@@ -134,13 +134,15 @@ if (NOT MIPS AND NOT CHERI)
     add_test_with_flag(retpoline RETPOLINE -mretpoline)
     add_test_with_flag(retpoline_gcc_ib RETPOLINE_GCC_IB -mindirect-branch=thunk)
     add_test_with_flag(retpoline_gcc_fr RETPOLINE_GCC_FR -mfunction-return=thunk)
-    if (RETPOLINE_GCC_IB AND RETPOLINE_GCC_FR )
+    if (RETPOLINE_GCC_IB AND RETPOLINE_GCC_FR)
         add_qsort_test(retpoline_gcc -mindirect-branch=thunk -mfunction-return=thunk)
     endif()
 endif()
 
 # LLVM safe-stack (split spills and address-taken variables)
 add_test_with_flag(safestack SAFESTACK -fsanitize=safe-stack)
+
+add_test_with_flag(slh SLH mspeculative-load-hardening)
 
 message(STATUS "All supported flags: ${ALL_SUPPORTED_FLAGS}")
 if (-fcf-protection IN_LIST ALL_SUPPORTED_FLAGS AND -mindirect-branch=thunk IN_LIST ALL_SUPPORTED_FLAGS)
