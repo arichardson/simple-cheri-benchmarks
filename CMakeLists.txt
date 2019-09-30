@@ -16,6 +16,13 @@ if (CMAKE_CROSSCOMPILING)
     message(STATUS "CMAKE_CROSSCOMPILING")
 endif()
 
+if (CMAKE_C_COMPILER_ID MATCHES "Clang")
+	set(CMAKE_EXE_LINKER_FLAGS "-fuse-ld=lld")
+	# 	set(CMAKE_EXE_LINKER_FLAGS "-fuse-ld=lld")
+	add_compile_options(-fuse-ld=lld)
+	# message(FATAL_ERROR "ASF")
+endif()
+
 if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "CHERI")
     message(STATUS "BUILDING FOR CHERI")
     set(CHERI 1)
@@ -83,6 +90,7 @@ add_qsort_test(default)
 set(ALL_SUPPORTED_FLAGS)
 
 macro(check_security_flag _flag _varname)
+    set(CMAKE_REQUIRED_LINK_OPTIONS ${_flag})
     check_c_compiler_flag(${_flag} ${_varname})
     if(${_varname})
         list(APPEND ALL_SUPPORTED_FLAGS ${_flag})
@@ -143,7 +151,7 @@ endif()
 add_test_with_flag(safestack SAFESTACK -fsanitize=safe-stack)
 
 add_test_with_flag(slh SLH -mspeculative-load-hardening)
-add_test_with_flag(slh_mllvm SLH_MLLVM -mllm -x86-speculative-load-hardening)
+add_test_with_flag(slh_mllvm SLH_MLLVM -mllvm -x86-speculative-load-hardening)
 
 message(STATUS "All supported flags: ${ALL_SUPPORTED_FLAGS}")
 if (-fcf-protection IN_LIST ALL_SUPPORTED_FLAGS AND -mindirect-branch=thunk IN_LIST ALL_SUPPORTED_FLAGS)
@@ -167,6 +175,11 @@ if (FALSE)
     # TODO: also include asan benchmarks
     add_test_with_flag(asan ASAN -fsanitize=address)
     add_test_with_flag(ubsan UBSAN -fsanitize=undefined)
+endif()
+
+add_test_with_flag(lto LTO "-flto")
+if (LTO)
+	add_qsort_test(lto_cfi -flto -fsanitize=cfi -fvisibility=protected)
 endif()
 
 # Try building static:
