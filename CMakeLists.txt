@@ -142,7 +142,8 @@ endif()
 # LLVM safe-stack (split spills and address-taken variables)
 add_test_with_flag(safestack SAFESTACK -fsanitize=safe-stack)
 
-add_test_with_flag(slh SLH mspeculative-load-hardening)
+add_test_with_flag(slh SLH -mspeculative-load-hardening)
+add_test_with_flag(slh_mllvm SLH_MLLVM -mllm -x86-speculative-load-hardening)
 
 message(STATUS "All supported flags: ${ALL_SUPPORTED_FLAGS}")
 if (-fcf-protection IN_LIST ALL_SUPPORTED_FLAGS AND -mindirect-branch=thunk IN_LIST ALL_SUPPORTED_FLAGS)

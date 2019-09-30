@@ -1,5 +1,6 @@
 #include <sys/cdefs.h>
 #include <sys/param.h>
+#include <stdint.h>
 
 #if __has_include(<statcounters.h>)
 #include <statcounters.h>
