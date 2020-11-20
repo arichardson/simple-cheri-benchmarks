@@ -63,10 +63,10 @@ _Alignas(65536) static long benchmark_buffer[65536];
 #endif
 
 int main(int argc, char** argv) {
-  // if (argc < 2) {
-  //  errx(EX_USAGE, "usage: <num_iterations> [ascending/descending] [bufsize]");
-  // }
-#ifdef __mips__
+  if (argc < 2) {
+    errx(EX_USAGE, "usage: <num_iterations> [ascending/descending] [bufsize]");
+  }
+#if defined(__mips__) || defined(__riscv)
   long iterations = 500;
 #else
   long iterations = 10000;
