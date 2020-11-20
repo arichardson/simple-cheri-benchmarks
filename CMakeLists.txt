@@ -9,18 +9,30 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 SET(CMAKE_INSTALL_RPATH "$ORIGIN")
 
+include(CMakePrintHelpers)
+cmake_print_variables(CMAKE_C_COMPILER CMAKE_C_COMPILER_ID)
+cmake_print_variables(CMAKE_CXX_COMPILER CMAKE_CXX_COMPILER_ID)
+cmake_print_variables(CMAKE_STRIP)
+cmake_print_variables(CMAKE_LINKER)
+cmake_print_variables(CMAKE_NM)
+cmake_print_variables(CMAKE_OBJDUMP)
+cmake_print_variables(CMAKE_OBJCOPY)
+cmake_print_variables(CMAKE_READELF)
+cmake_print_variables(CMAKE_DLLTOOL)
+cmake_print_variables(CMAKE_ADDR2LINE)
+include(CMakePrintSystemInformation)
+
+
 if (APPLE)
     message(STATUS "APPLE TARGET")
-endif()
-if (CMAKE_CROSSCOMPILING)
-    message(STATUS "CMAKE_CROSSCOMPILING")
+elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_EXE_LINKER_FLAGS "-fuse-ld=lld")
+    set(CMAKE_SHARED_LINKER_FLAGS "-fuse-ld=lld")
+    add_compile_options(-fuse-ld=lld)
 endif()
 
-if (CMAKE_C_COMPILER_ID MATCHES "Clang")
-	set(CMAKE_EXE_LINKER_FLAGS "-fuse-ld=lld")
-	# 	set(CMAKE_EXE_LINKER_FLAGS "-fuse-ld=lld")
-	add_compile_options(-fuse-ld=lld)
-	# message(FATAL_ERROR "ASF")
+if (CMAKE_CROSSCOMPILING)
+    message(STATUS "CMAKE_CROSSCOMPILING")
 endif()
 
 if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "CHERI")
@@ -64,7 +76,7 @@ add_compile_options(-O2)
 function(add_objdump _target)
     if (EXISTS "$ENV{CHERI_SDK}/llvm-objdump")
         add_custom_command(TARGET ${_target} POST_BUILD
-            COMMAND "$ENV{CHERI_SDK}/llvm-objdump" ARGS -no-leading-addr -d $<TARGET_FILE:${_target}> > "${CMAKE_CURRENT_BINARY_DIR}/${_target}.dump"
+            COMMAND "$ENV{CHERI_SDK}/llvm-objdump" ARGS --no-leading-addr -d $<TARGET_FILE:${_target}> > "${CMAKE_CURRENT_BINARY_DIR}/${_target}.dump"
             BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/${_target}.dump" VERBATIM
             COMMENT "Creating dump of ${_target}")
     endif()
@@ -178,7 +190,7 @@ if (FALSE)
 endif()
 
 add_test_with_flag(lto LTO "-flto")
-if (LTO)
+if (LTO AND NOT APPLE)
 	add_qsort_test(lto_cfi -flto -fsanitize=cfi -fvisibility=protected)
 endif()
 
